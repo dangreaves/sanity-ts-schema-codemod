@@ -1,13 +1,14 @@
 import { Command } from "commander";
 
-import { helloWorld } from "@/commands/hello-world.js";
+import { convertSchemas } from "@/commands/convert-schemas.js";
 
 const program = new Command();
 
 program
-  .command("hello-world")
-  .description("Output a hello world message")
-  .requiredOption("-n, --name <string>", "Your name")
-  .action((args: { name: string }) => helloWorld(args));
+  .command("convert-schemas")
+  .description("Convert schemas from JavaScript to TypeScript")
+  .requiredOption("-i, --input <string>", "Directory of JS schemas")
+  .requiredOption("-o, --output <string>", "Output directory for TS schemas")
+  .action((args) => convertSchemas(args));
 
 await program.parse();
