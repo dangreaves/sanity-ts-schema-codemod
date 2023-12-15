@@ -1,14 +1,45 @@
-# Template TypeScript CLI
+# Codemod for converting Sanity schemas from JavaScript to TypeScript
 
-![GitHub License](https://img.shields.io/github/license/dangreaves/template-typescript-cli)
+![GitHub License](https://img.shields.io/github/license/dangreaves/sanity-ts-schema-codemod)
 
-Template for building small Node.js CLI projects with TypeScript.
+This tool uses [jscodeshift](https://github.com/facebook/jscodeshift) to take a set of [Sanity CMS](https://www.sanity.io) schemas in JavaScript format, and convert them to the new TypeScript format supported by Sanity v3.
 
-## Tools
+## Example
 
-- [tsx](https://github.com/privatenumber/tsx)
-- [husky](https://github.com/typicode/husky)
-- [prettier](https://prettier.io)
-- [commander](https://github.com/tj/commander.js)
-- [typescript](https://www.typescriptlang.org)
-- [lint-staged](https://github.com/lint-staged/lint-staged)
+```js
+export default {
+  name: "person",
+  title: "Person",
+  type: "document",
+  fields: [
+    {
+      name: "fullName",
+      title: "Full name",
+      type: "string",
+    },
+  ],
+};
+```
+
+```ts
+import { defineField, defineType } from "sanity";
+
+export default defineType({
+  name: "person",
+  title: "Person",
+  type: "document",
+  fields: [
+    defineField({
+      name: "fullName",
+      title: "Full name",
+      type: "string",
+    }),
+  ],
+});
+```
+
+## Usage
+
+```bash
+npm start -- convert-schemas --input ./src/js-schemas --output ./src/ts-schemas
+```

@@ -1,5 +1,5 @@
 {
-  "name": "@dangreaves/template-typescript-cli",
+  "name": "@dangreaves/sanity-ts-schema-codemod",
   "private": true,
   "type": "module",
   "license": "MIT",
