@@ -1,5 +1,3 @@
-import path from "node:path";
-
 import type { Transform, Collection, JSCodeshift } from "jscodeshift";
 
 const transformer: Transform = (fileInfo, api) => {
@@ -13,30 +11,7 @@ const transformer: Transform = (fileInfo, api) => {
 
   // Resolve program.
   const programPath = root.find(j.Program).paths()[0];
-
-  // No program found.
   if (!programPath) return;
-
-  // Create import declaration.
-  const sanityImportNode = j.importDeclaration(
-    [
-      {
-        type: "ImportSpecifier",
-        imported: { type: "Identifier", name: "defineField" },
-      },
-      {
-        type: "ImportSpecifier",
-        imported: { type: "Identifier", name: "defineType" },
-      },
-    ],
-    {
-      type: "Literal",
-      value: "sanity",
-    },
-  );
-
-  // Insert import node at top of program.
-  programPath.node.body.unshift(sanityImportNode);
 
   // Remove __experimental_actions attributes.
   root.find(j.Property, { key: { name: "__experimental_actions" } }).remove();
@@ -94,6 +69,30 @@ const transformer: Transform = (fileInfo, api) => {
     );
   });
 
+  // Prepend import declaration.
+  programPath.node.body.unshift(
+    j.importDeclaration(
+      [
+        ...(!!schema.hasFields
+          ? [
+              {
+                type: "ImportSpecifier",
+                imported: { type: "Identifier", name: "defineField" },
+              } as const,
+            ]
+          : []),
+        {
+          type: "ImportSpecifier",
+          imported: { type: "Identifier", name: "defineType" },
+        },
+      ],
+      {
+        type: "Literal",
+        value: "sanity",
+      },
+    ),
+  );
+
   return root.toSource();
 };
 
@@ -116,7 +115,17 @@ function resolveSchema(root: Collection, j: JSCodeshift) {
     return null;
   }
 
+  const fieldPaths = root
+    .find(j.ObjectExpression)
+    .filter(
+      (path) =>
+        "ArrayExpression" === path.parent.value.type &&
+        "Property" === path.parent.parent.value.type &&
+        "fields" === path.parent.parent.value.key.name,
+    );
+
   return {
+    hasFields: !!fieldPaths.length,
     name: `${schemaNameProperty.node.value.value}`,
   };
 }
