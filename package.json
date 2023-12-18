@@ -10,11 +10,14 @@
     "start": "tsx ./src/index.ts"
   },
   "dependencies": {
-    "commander": "^11.1.0"
+    "commander": "^11.1.0",
+    "globby": "^14.0.0",
+    "jscodeshift": "^0.15.1"
   },
   "devDependencies": {
     "@tsconfig/node20": "^20.1.2",
     "@tsconfig/strictest": "^2.0.2",
+    "@types/jscodeshift": "^0.11.11",
     "@types/node": "^20",
     "husky": "^8.0.3",
     "lint-staged": "^15.0.2",
