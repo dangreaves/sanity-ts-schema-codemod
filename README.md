@@ -24,7 +24,7 @@ export default {
 ```ts
 import { defineField, defineType } from "sanity";
 
-export default defineType({
+export const person = defineType({
   name: "person",
   title: "Person",
   type: "document",
