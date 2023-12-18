@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import fs from "fs-extra";
 import { globby } from "globby";
 import { run as jscodeshift } from "jscodeshift/src/Runner.js";
 
@@ -12,9 +13,23 @@ export async function convertSchemas({
   input: string;
   output: string;
 }) {
-  const jsPaths = await globby(path.join(input, "**/*.js"));
+  // Resolve input and output dirs.
+  const inputDir = path.resolve(input);
+  const outputDir = path.resolve(output);
 
-  await jscodeshift(transformPath, jsPaths, {
+  // Copy files to output dir.
+  for (const jsPath of await globby(path.join(inputDir, "**/*.js"))) {
+    const relativePath = jsPath.replace(inputDir, "");
+
+    const sourcePath = path.join(inputDir, relativePath);
+    const outputPath = path.join(outputDir, relativePath).replace(".js", ".ts");
+
+    await fs.copy(sourcePath, outputPath);
+  }
+
+  // Transform output files.
+  const transformPaths = await globby(path.join(outputDir, "**/*.ts"));
+  await jscodeshift(transformPath, transformPaths, {
     verbose: true,
   });
 }
