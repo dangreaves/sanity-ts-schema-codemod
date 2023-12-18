@@ -35,6 +35,9 @@ const transformer: Transform = (fileInfo, api) => {
   // Insert import node at top of program.
   programPath.node.body.unshift(sanityImportNode);
 
+  // Remove __experimental_actions attributes.
+  root.find(j.Property, { key: { name: "__experimental_actions" } }).remove();
+
   // Wrap object expressions with sanity imports.
   root.find(j.ObjectExpression).forEach((path) => {
     // Root schema should be wrapped with defineType.
