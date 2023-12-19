@@ -102,30 +102,85 @@ export default transformer;
  * Resolve schema information.
  */
 function resolveSchema(root: Collection, j: JSCodeshift) {
-  const schemaNameProperty = root
-    .find(j.Property, { key: { name: "name" } })
-    .filter(
-      (p) =>
-        "ObjectExpression" === p.parent.node.type &&
-        "ExportDefaultDeclaration" === p.parent.parent.node.type,
-    )
-    .paths()[0];
+  // Resolve schema object even when nested in a helper function.
+  const objectExpression = root
+    .find(j.ObjectExpression)
+    .filter((p) => {
+      const typeProperty = p.node.properties.find(
+        (property) =>
+          "Property" === property.type &&
+          "Identifier" === property.key.type &&
+          "title" === property.key.name,
+      );
 
-  if (!schemaNameProperty || "Literal" !== schemaNameProperty.node.value.type) {
+      const nameProperty = p.node.properties.find(
+        (property) =>
+          "Property" === property.type &&
+          "Identifier" === property.key.type &&
+          "name" === property.key.name,
+      );
+
+      return !!typeProperty && !!nameProperty;
+    })
+    .paths()[0]?.node;
+
+  if (!objectExpression) return null;
+
+  // Resolve the schema type.
+  const typeProperty = objectExpression.properties.find(
+    (property) =>
+      "Property" === property.type &&
+      "Identifier" === property.key.type &&
+      "title" === property.key.name,
+  );
+
+  // Type guard the schema type.
+  if (
+    !typeProperty ||
+    "Property" !== typeProperty.type ||
+    "Literal" !== typeProperty.value.type ||
+    "string" !== typeof typeProperty.value.value
+  ) {
     return null;
   }
 
-  const fieldPaths = root
-    .find(j.ObjectExpression)
-    .filter(
-      (path) =>
-        "ArrayExpression" === path.parent.value.type &&
-        "Property" === path.parent.parent.value.type &&
-        "fields" === path.parent.parent.value.key.name,
-    );
+  // Resolve the schema name.
+  const nameProperty = objectExpression.properties.find(
+    (property) =>
+      "Property" === property.type &&
+      "Identifier" === property.key.type &&
+      "name" === property.key.name,
+  );
+
+  // Type guard the schema name.
+  if (
+    !nameProperty ||
+    "Property" !== nameProperty.type ||
+    "Literal" !== nameProperty.value.type ||
+    "string" !== typeof nameProperty.value.value
+  ) {
+    return null;
+  }
+
+  // Resolve the fields property.
+  const fieldsProperty = objectExpression.properties.find(
+    (property) =>
+      "Property" === property.type &&
+      "Identifier" === property.key.type &&
+      "fields" === property.key.name,
+  );
+
+  // Determine if this schema has fields.
+  const hasFields =
+    !!fieldsProperty &&
+    "Property" === fieldsProperty.type &&
+    "ArrayExpression" === fieldsProperty.value.type &&
+    0 < fieldsProperty.value.elements.length;
 
   return {
-    hasFields: !!fieldPaths.length,
-    name: `${schemaNameProperty.node.value.value}`,
+    hasFields,
+    objectExpression,
+    name: nameProperty.value.value,
+    type: typeProperty.value.value,
   };
 }
