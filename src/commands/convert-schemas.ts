@@ -18,7 +18,7 @@ export async function convertSchemas({
   const outputDir = path.resolve(output);
 
   // Copy files to output dir.
-  for (const jsPath of await globby(path.join(inputDir, "**/*.js"))) {
+  for (const jsPath of await globby(path.join(inputDir, "**/*.{js,jsx}"))) {
     const relativePath = jsPath.replace(inputDir, "");
 
     const sourcePath = path.join(inputDir, relativePath);
