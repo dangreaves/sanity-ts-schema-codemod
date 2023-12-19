@@ -4,8 +4,6 @@ import fs from "fs-extra";
 import { globby } from "globby";
 import { run as jscodeshift } from "jscodeshift/src/Runner.js";
 
-const transformPath = path.resolve("src/transformers/schema.ts");
-
 export async function convertSchemas({
   input,
   output,
@@ -27,9 +25,15 @@ export async function convertSchemas({
     await fs.copy(sourcePath, outputPath);
   }
 
-  // Transform output files.
+  // Resolve output files to transform.
   const transformPaths = await globby(path.join(outputDir, "**/*.{ts,tsx}"));
-  await jscodeshift(transformPath, transformPaths, {
-    verbose: true,
-  });
+
+  // Run transform.
+  await jscodeshift(
+    path.resolve("src/transformers/schema.ts"),
+    transformPaths,
+    {
+      verbose: true,
+    },
+  );
 }
