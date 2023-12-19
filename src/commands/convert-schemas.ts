@@ -28,7 +28,7 @@ export async function convertSchemas({
   }
 
   // Transform output files.
-  const transformPaths = await globby(path.join(outputDir, "**/*.ts"));
+  const transformPaths = await globby(path.join(outputDir, "**/*.{ts,tsx}"));
   await jscodeshift(transformPath, transformPaths, {
     verbose: true,
   });
