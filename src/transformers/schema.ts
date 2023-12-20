@@ -90,11 +90,22 @@ const transformer: Transform = (fileInfo, api) => {
     }
   });
 
+  // Determine if this schema contains calls to defineField.
+  const hasFields =
+    0 <
+    root
+      .find(j.CallExpression)
+      .filter(
+        (path) =>
+          "Identifier" === path.node.callee.type &&
+          "defineField" === path.node.callee.name,
+      ).length;
+
   // Prepend import declaration.
   programPath.node.body.unshift(
     j.importDeclaration(
       [
-        ...(!!schema.hasFields
+        ...(!!hasFields
           ? [
               {
                 type: "ImportSpecifier",
@@ -197,16 +208,8 @@ function resolveSchema(path: ASTPath<ObjectExpression>) {
       "fields" === property.key.name,
   );
 
-  // Determine if this schema has fields.
-  const hasFields =
-    !!fieldsProperty &&
-    "Property" === fieldsProperty.type &&
-    "ArrayExpression" === fieldsProperty.value.type &&
-    0 < fieldsProperty.value.elements.length;
-
   return {
     isRoot,
-    hasFields,
     name: nameProperty.value.value,
     type: typeProperty.value.value,
   };
