@@ -69,6 +69,18 @@ const transformer: Transform = (fileInfo, api) => {
     );
   });
 
+  // Replace import sources.
+  root.find(j.ImportDeclaration).forEach((path) => {
+    // Bit of a domain specific one but won't match for general use cases.
+    if (
+      "Literal" === path.node.source.type &&
+      "string" === typeof path.node.source.value &&
+      path.node.source.value.includes("withLocalisation")
+    ) {
+      path.node.source.value = "@/lib/withLocalisation";
+    }
+  });
+
   // Prepend import declaration.
   programPath.node.body.unshift(
     j.importDeclaration(
