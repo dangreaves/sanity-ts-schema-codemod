@@ -1,4 +1,10 @@
-import type { Transform, Collection, JSCodeshift } from "jscodeshift";
+import type {
+  ASTPath,
+  Transform,
+  Collection,
+  JSCodeshift,
+  ObjectExpression,
+} from "jscodeshift";
 
 const transformer: Transform = (fileInfo, api) => {
   const j = api.jscodeshift;
@@ -6,7 +12,7 @@ const transformer: Transform = (fileInfo, api) => {
   const root = j(fileInfo.source);
 
   // Resolve schema information
-  const schema = resolveSchema(root, j);
+  const schema = resolveRootSchema(root, j);
   if (!schema) return;
 
   // Resolve program.
@@ -16,10 +22,13 @@ const transformer: Transform = (fileInfo, api) => {
   // Remove __experimental_actions attributes.
   root.find(j.Property, { key: { name: "__experimental_actions" } }).remove();
 
-  // Wrap object expressions with sanity imports.
+  // Wrap schemas with sanity imports.
   root.find(j.ObjectExpression).forEach((path) => {
+    const schema = resolveSchema(path);
+    if (!schema) return;
+
     // Root schema should be wrapped with defineType.
-    if ("ExportDefaultDeclaration" === path.parent.value.type) {
+    if (schema.isRoot) {
       path.replace(
         j.callExpression(
           {
@@ -111,42 +120,32 @@ const transformer: Transform = (fileInfo, api) => {
 export default transformer;
 
 /**
- * Resolve schema information.
+ * Resolve root schema.
  */
-function resolveSchema(root: Collection, j: JSCodeshift) {
-  // Resolve schema object even when nested in a helper function.
+function resolveRootSchema(root: Collection, j: JSCodeshift) {
   const objectExpression = root
     .find(j.ObjectExpression)
-    .filter((p) => {
-      const typeProperty = p.node.properties.find(
-        (property) =>
-          "Property" === property.type &&
-          "Identifier" === property.key.type &&
-          "title" === property.key.name,
-      );
-
-      const nameProperty = p.node.properties.find(
-        (property) =>
-          "Property" === property.type &&
-          "Identifier" === property.key.type &&
-          "name" === property.key.name,
-      );
-
-      return !!typeProperty && !!nameProperty;
-    })
-    .paths()[0]?.node;
+    .filter((path) => !!resolveSchema(path)?.isRoot)
+    .paths()[0];
 
   if (!objectExpression) return null;
 
-  // Resolve the schema type.
-  const typeProperty = objectExpression.properties.find(
+  return resolveSchema(objectExpression);
+}
+
+/**
+ * Given an object expression determine if it is a schema.
+ */
+function resolveSchema(path: ASTPath<ObjectExpression>) {
+  // Resolve type property.
+  const typeProperty = path.node.properties.find(
     (property) =>
       "Property" === property.type &&
       "Identifier" === property.key.type &&
       "title" === property.key.name,
   );
 
-  // Type guard the schema type.
+  // Type guard type property.
   if (
     !typeProperty ||
     "Property" !== typeProperty.type ||
@@ -156,15 +155,15 @@ function resolveSchema(root: Collection, j: JSCodeshift) {
     return null;
   }
 
-  // Resolve the schema name.
-  const nameProperty = objectExpression.properties.find(
+  // Resolve name property.
+  const nameProperty = path.node.properties.find(
     (property) =>
       "Property" === property.type &&
       "Identifier" === property.key.type &&
       "name" === property.key.name,
   );
 
-  // Type guard the schema name.
+  // Type guard name property.
   if (
     !nameProperty ||
     "Property" !== nameProperty.type ||
@@ -174,8 +173,24 @@ function resolveSchema(root: Collection, j: JSCodeshift) {
     return null;
   }
 
+  // Determine if this is the root schema.
+  const isRoot = (() => {
+    // Object is a direct default export.
+    if ("ExportDefaultDeclaration" === path.parent.value.type) return true;
+
+    // Object is nested in a function, which itself is a default export.
+    if (
+      "CallExpression" === path.parent.value.type &&
+      "ExportDefaultDeclaration" === path.parent.parent.value.type
+    ) {
+      return true;
+    }
+
+    return false;
+  })();
+
   // Resolve the fields property.
-  const fieldsProperty = objectExpression.properties.find(
+  const fieldsProperty = path.node.properties.find(
     (property) =>
       "Property" === property.type &&
       "Identifier" === property.key.type &&
@@ -190,8 +205,8 @@ function resolveSchema(root: Collection, j: JSCodeshift) {
     0 < fieldsProperty.value.elements.length;
 
   return {
+    isRoot,
     hasFields,
-    objectExpression,
     name: nameProperty.value.value,
     type: typeProperty.value.value,
   };
