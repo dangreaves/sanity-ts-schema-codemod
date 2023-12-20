@@ -142,7 +142,7 @@ function resolveSchema(path: ASTPath<ObjectExpression>) {
     (property) =>
       "Property" === property.type &&
       "Identifier" === property.key.type &&
-      "title" === property.key.name,
+      "type" === property.key.name,
   );
 
   // Type guard type property.
