@@ -80,13 +80,25 @@ const transformer: Transform = (fileInfo, api) => {
 
   // Replace import sources.
   root.find(j.ImportDeclaration).forEach((path) => {
-    // Bit of a domain specific one but won't match for general use cases.
+    // Domain specific replacement.
     if (
       "Literal" === path.node.source.type &&
       "string" === typeof path.node.source.value &&
       path.node.source.value.includes("withLocalisation")
     ) {
       path.node.source.value = "@/lib/withLocalisation";
+    }
+
+    // Domain specific replacement.
+    if (
+      "Literal" === path.node.source.type &&
+      "string" === typeof path.node.source.value &&
+      path.node.source.value.includes("document-internationalization.json")
+    ) {
+      path.node.specifiers = [
+        j.importSpecifier(j.identifier("internationalizationConfig")),
+      ];
+      path.node.source.value = "@/sanity.config.js";
     }
   });
 
