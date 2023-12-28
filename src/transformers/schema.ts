@@ -11,13 +11,46 @@ const transformer: Transform = (fileInfo, api) => {
 
   const root = j(fileInfo.source);
 
+  // Replace import sources.
+  root.find(j.ImportDeclaration).forEach((path) => {
+    // Domain specific replacement.
+    if (
+      "Literal" === path.node.source.type &&
+      "string" === typeof path.node.source.value &&
+      path.node.source.value.includes("withLocalisation")
+    ) {
+      path.node.source.value = "@/lib/withLocalisation";
+    }
+
+    // Domain specific replacement.
+    if (
+      "Literal" === path.node.source.type &&
+      "string" === typeof path.node.source.value &&
+      path.node.source.value.includes("document-internationalization.json")
+    ) {
+      path.node.specifiers = [
+        j.importSpecifier(j.identifier("internationalizationConfig")),
+      ];
+      path.node.source.value = "@/config/i18n";
+    }
+
+    // Domain specific replacement.
+    if (
+      "Literal" === path.node.source.type &&
+      "string" === typeof path.node.source.value &&
+      path.node.source.value.includes("design-tokens/dist/index.cjs")
+    ) {
+      path.node.source.value = "@bared/design-tokens";
+    }
+  });
+
   // Resolve schema information
   const schema = resolveRootSchema(root, j);
-  if (!schema) return;
+  if (!schema) return root.toSource();
 
   // Resolve program.
   const programPath = root.find(j.Program).paths()[0];
-  if (!programPath) return;
+  if (!programPath) return root.toSource();
 
   // Remove __experimental_actions attributes.
   root.find(j.Property, { key: { name: "__experimental_actions" } }).remove();
@@ -76,30 +109,6 @@ const transformer: Transform = (fileInfo, api) => {
         ]),
       ),
     );
-  });
-
-  // Replace import sources.
-  root.find(j.ImportDeclaration).forEach((path) => {
-    // Domain specific replacement.
-    if (
-      "Literal" === path.node.source.type &&
-      "string" === typeof path.node.source.value &&
-      path.node.source.value.includes("withLocalisation")
-    ) {
-      path.node.source.value = "@/lib/withLocalisation";
-    }
-
-    // Domain specific replacement.
-    if (
-      "Literal" === path.node.source.type &&
-      "string" === typeof path.node.source.value &&
-      path.node.source.value.includes("document-internationalization.json")
-    ) {
-      path.node.specifiers = [
-        j.importSpecifier(j.identifier("internationalizationConfig")),
-      ];
-      path.node.source.value = "@/sanity.config.js";
-    }
   });
 
   // Determine if this schema contains calls to defineField.
