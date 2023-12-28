@@ -13,7 +13,8 @@
     "commander": "^11.1.0",
     "fs-extra": "^11.2.0",
     "globby": "^14.0.0",
-    "jscodeshift": "^0.15.1"
+    "jscodeshift": "^0.15.1",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@tsconfig/node20": "^20.1.2",

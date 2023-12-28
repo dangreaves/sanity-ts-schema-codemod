@@ -1,19 +1,18 @@
 import path from "node:path";
 
+import z from "zod";
 import fs from "fs-extra";
 import { globby } from "globby";
 import { run as jscodeshift } from "jscodeshift/src/Runner.js";
 
-export async function convertSchemas({
-  input,
-  output,
-}: {
-  input: string;
-  output: string;
-}) {
+import { ConvertSchemasInnerSchema } from "@/schemas.js";
+
+export async function convertSchemas(
+  options: z.infer<typeof ConvertSchemasInnerSchema>,
+) {
   // Resolve input and output dirs.
-  const inputDir = path.resolve(input);
-  const outputDir = path.resolve(output);
+  const inputDir = path.resolve(options.input);
+  const outputDir = path.resolve(options.output);
 
   // Copy files to output dir.
   for (const jsPath of await globby(path.join(inputDir, "**/*.{js,jsx}"))) {
@@ -33,6 +32,7 @@ export async function convertSchemas({
     path.resolve("src/transformers/schema.ts"),
     transformPaths,
     {
+      ...options,
       verbose: true,
     },
   );

@@ -6,7 +6,11 @@ import type {
   ObjectExpression,
 } from "jscodeshift";
 
-const transformer: Transform = (fileInfo, api) => {
+import { ConvertSchemasInnerSchema } from "@/schemas.js";
+
+const transformer: Transform = (fileInfo, api, _options) => {
+  const options = ConvertSchemasInnerSchema.parse(_options);
+
   const j = api.jscodeshift;
 
   const root = j(fileInfo.source);
@@ -54,6 +58,20 @@ const transformer: Transform = (fileInfo, api) => {
 
   // Remove __experimental_actions attributes.
   root.find(j.Property, { key: { name: "__experimental_actions" } }).remove();
+
+  // Remove unsupported field types.
+  root
+    .find(j.ObjectExpression)
+    .filter((path) => {
+      const schema = resolveSchema(path);
+
+      return (
+        !!schema &&
+        !schema.isRoot &&
+        options.removeFieldTypes.includes(schema.type)
+      );
+    })
+    .remove();
 
   // Wrap schemas with sanity imports.
   root.find(j.ObjectExpression).forEach((path) => {
