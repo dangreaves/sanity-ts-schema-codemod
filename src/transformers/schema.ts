@@ -73,6 +73,52 @@ const transformer: Transform = (fileInfo, api, _options) => {
     })
     .remove();
 
+  // Resolve list of fieldsets referenced by fields.
+  const fieldsets: string[] = [];
+  root.find(j.ObjectExpression).forEach((path) => {
+    const schema = resolveSchema(path);
+    if (schema?.fieldset && !fieldsets.includes(schema.fieldset)) {
+      fieldsets.push(schema?.fieldset);
+    }
+  });
+
+  // Remove fieldsets which have no associated fields.
+  root
+    .find(j.ObjectExpression)
+    .filter((path) => {
+      // Filter objects which have a parent identifier called "fieldsets".
+      if (
+        "ArrayExpression" !== path.parent.value.type ||
+        "Property" !== path.parent.parent.value.type ||
+        "Identifier" !== path.parent.parent.value.key.type ||
+        "fieldsets" !== path.parent.parent.value.key.name
+      ) {
+        return false;
+      }
+
+      // Resolve the fieldset name property.
+      const nameProperty = path.node.properties.find(
+        (property) =>
+          "Property" === property.type &&
+          "Identifier" === property.key.type &&
+          "name" === property.key.name,
+      );
+
+      // Type guard the name property.
+      if (
+        !nameProperty ||
+        "Property" !== nameProperty.type ||
+        "Literal" !== nameProperty.value.type ||
+        "string" !== typeof nameProperty.value.value
+      ) {
+        return false;
+      }
+
+      // Filter fieldsets which are included in the array.
+      return !fieldsets.includes(nameProperty.value.value);
+    })
+    .remove();
+
   // Wrap schemas with sanity imports.
   root.find(j.ObjectExpression).forEach((path) => {
     const schema = resolveSchema(path);
@@ -223,6 +269,23 @@ function resolveSchema(path: ASTPath<ObjectExpression>) {
     return null;
   }
 
+  // Resolve name property.
+  const fieldsetProperty = path.node.properties.find(
+    (property) =>
+      "Property" === property.type &&
+      "Identifier" === property.key.type &&
+      "fieldset" === property.key.name,
+  );
+
+  // Type guard fieldset property.
+  const fieldset =
+    !fieldsetProperty ||
+    "Property" !== fieldsetProperty.type ||
+    "Literal" !== fieldsetProperty.value.type ||
+    "string" !== typeof fieldsetProperty.value.value
+      ? null
+      : fieldsetProperty.value.value;
+
   // Determine if this is the root schema.
   const isRoot = (() => {
     // Object is a direct default export.
@@ -249,6 +312,7 @@ function resolveSchema(path: ASTPath<ObjectExpression>) {
 
   return {
     isRoot,
+    fieldset,
     name: nameProperty.value.value,
     type: typeProperty.value.value,
   };
