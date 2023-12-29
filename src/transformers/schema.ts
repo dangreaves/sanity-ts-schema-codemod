@@ -23,7 +23,11 @@ const transformer: Transform = (fileInfo, api, _options) => {
       "string" === typeof path.node.source.value &&
       path.node.source.value.includes("withLocalisation")
     ) {
-      path.node.source.value = "@/lib/withLocalisation";
+      path.node.specifiers = [
+        j.importSpecifier(j.identifier("withInternationalization")),
+      ];
+
+      path.node.source.value = "@/lib/i18n";
     }
 
     // Domain specific replacement.
@@ -47,6 +51,12 @@ const transformer: Transform = (fileInfo, api, _options) => {
       path.node.source.value = "@bared/design-tokens";
     }
   });
+
+  // Replace calls to withLocalisation import.
+  root
+    .find(j.Identifier)
+    .filter((path) => "withLocalisation" === path.value.name)
+    .replaceWith(j.identifier("withInternationalization"));
 
   // Resolve schema information
   const schema = resolveRootSchema(root, j);
